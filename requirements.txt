@@ -4,3 +4,4 @@ tqdm
 pandas
 underthesea
 scikit-learn
+vncorenlp
