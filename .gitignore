@@ -100,7 +100,9 @@ ENV/
 # mypy
 .mypy_cache/
 
-/openjdk*
-/jdk*
+/others/*
 /bert
 /.vscode
+/transformers-master
+/models/*
+/Dataset/*

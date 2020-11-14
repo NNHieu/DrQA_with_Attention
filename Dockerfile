@@ -4,8 +4,8 @@ FROM tensorflow/tensorflow:latest-gpu-jupyter
 ###################################
 #### Install Java 11
 ###################################
-ARG JDK_VERSION=15.0.1
-ARG TAR_JAVA_FILE=jdk_bin.tar.gz
+ARG JDK_VERSION=11.0.2
+ARG TAR_JAVA_FILE=openjdk-11.0.2_linux-x64_bin.tar.gz
 
 COPY ${TAR_JAVA_FILE} /tmp
 ENV JAVA_HOME /usr/lib/jvm/jdk-${JDK_VERSION}
@@ -20,3 +20,12 @@ RUN mkdir /code
 WORKDIR /code
 COPY requirements.txt /code/
 RUN pip install -r requirements.txt
+
+###################################
+#### Transformer
+###################################
+ARG TRANSFORMERS_MASTER=transformers-master.zip
+
+COPY ${TRANSFORMERS_MASTER} /tmp
+RUN unzip /tmp/${TRANSFORMERS_MASTER} -d /tmp && cd /tmp/transformers-master && pip install --upgrade . && rm -r /tmp/transformers-master /tmp/${TRANSFORMERS_MASTER}
+WORKDIR /code
