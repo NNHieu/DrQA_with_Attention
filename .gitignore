@@ -102,6 +102,7 @@ ENV/
 
 /others/*
 !/others/README.md
+!/others/setup_docker/README.md
 /bert
 /.vscode
 /transformers-master

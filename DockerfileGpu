@@ -1,5 +1,4 @@
-FROM tensorflow/tensorflow:latest-gpu-jupyter
-
+FROM pytorch/pytorch:1.7.0-cuda11.0-cudnn8-devel
 
 ###################################
 #### Install Java 11
@@ -24,8 +23,14 @@ RUN pip install -r requirements.txt
 ###################################
 #### Transformer
 ###################################
-ARG TRANSFORMERS_MASTER=transformers-master.zip
+# ARG TRANSFORMERS_MASTER=transformers-master.zip
 
-COPY ${TRANSFORMERS_MASTER} /tmp
-RUN unzip /tmp/${TRANSFORMERS_MASTER} -d /tmp && cd /tmp/transformers-master && pip install --upgrade . && rm -r /tmp/transformers-master /tmp/${TRANSFORMERS_MASTER}
-WORKDIR /code
+# COPY ${TRANSFORMERS_MASTER} /tmp
+# RUN unzip /tmp/${TRANSFORMERS_MASTER} -d /tmp && cd /tmp/transformers-master && pip install --upgrade . && rm -r /tmp/transformers-master /tmp/${TRANSFORMERS_MASTER}
+# WORKDIR /code
+
+###################################
+#### FastText
+###################################
+RUN cd /tmp && git clone https://github.com/facebookresearch/fastText.git &&\
+    cd fastText && pip install . && cd /code && rm -rf /tmp/fastText

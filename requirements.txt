@@ -5,3 +5,4 @@ pandas
 underthesea
 scikit-learn
 vncorenlp
+gensim

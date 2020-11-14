@@ -8,3 +8,15 @@ services:
       - .:/code
     ports:
       - "8080:8080"
+
+  cpu:
+    build: 
+      context: .
+      dockerfile: DockerfileCpu
+      args:
+        buildno: 1 
+    command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
+    volumes: 
+      - .:/code
+    ports:
+      - "8080:8080"
