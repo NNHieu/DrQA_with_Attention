@@ -101,8 +101,11 @@ ENV/
 .mypy_cache/
 
 /others/*
+!/others/README.md
 /bert
 /.vscode
 /transformers-master
 /models/*
+!/models/README.md
 /Dataset/*
+!/Dataset/Readme.md
