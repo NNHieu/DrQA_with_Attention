@@ -1,22 +1,32 @@
-version: "3.8"
+version: "2.4"
    
 services:
-  answer:
-    build: .
+  gpu:
+    build: 
+      context: .
+      dockerfile: DockerfileGpu
+      args:
+        buildno: 1 
+    image: answer:gpu
     command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
     volumes: 
       - .:/code
     ports:
       - "8080:8080"
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
 
   cpu:
     build: 
       context: .
       dockerfile: DockerfileCpu
       args:
-        buildno: 1 
+        buildno: 1
+    image: answer:cpu
     command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
     volumes: 
       - .:/code
     ports:
       - "8080:8080"
+

@@ -6,3 +6,6 @@ underthesea
 scikit-learn
 vncorenlp
 gensim
+jupyter
+transformers
+sentencepiece
