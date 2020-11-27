@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from . import layers
 
 
@@ -29,7 +30,7 @@ class RnnDocReader(nn.Module):
         if args.use_qemb:
             context_input_size += args.embedding_dim
 
-        # RNN document encoder
+        # RNN context encoder
         # self.text_lstm = nn.LSTM(input_size=args.text_input_size,
         #                     hidden_size=args.hidden_size, 
         #                     dropout = args.dropout,
@@ -80,36 +81,38 @@ class RnnDocReader(nn.Module):
 
         # Bilinear attention for span start/end
         self.start_attn = layers.BilinearSeqAttn(
-            doc_hidden_size,
+            context_hidden_size,
             question_hidden_size,
             normalize=normalize,
         )
-        self.end_attn = layers.BilinearSeqAttn(
-            doc_hidden_size,
-            question_hidden_size,
-            normalize=normalize,
-        )
+        # self.end_attn = layers.BilinearSeqAttn(
+        #     context_hidden_size,
+        #     question_hidden_size,
+        #     normalize=normalize,
+        # )
+
+        self.out = nn.Linear()
 
     def forward(self, x1, x1_f, x1_mask, x2, x2_mask):
         """Inputs:
-        x1 = document word indices             [batch * len_d]
-        x1_f = document word features indices  [batch * len_d * nfeat]
-        x1_mask = document padding mask        [batch * len_d]
+        x1 = context ids             [batch * len_d]
+        x1_f = context features indices  [batch * len_d * nfeat]
+        x1_mask = context padding mask        [batch * len_d]
         x2 = question word indices             [batch * len_q]
         x2_mask = question padding mask        [batch * len_q]
         """
-        # Embed both document and question
+        # Embed both context and question
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
-            x1_emb = nn.functional.dropout(x1_emb, p=self.args.dropout_emb,
+            x1_emb = F.dropout(x1_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
+            x2_emb = F.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
 
-        # Form document encoding inputs
+        # Form context encoding inputs
         drnn_input = [x1_emb]
 
         # Add attention-weighted question representation
@@ -121,8 +124,8 @@ class RnnDocReader(nn.Module):
         if self.args.num_features > 0:
             drnn_input.append(x1_f)
 
-        # Encode document with RNN
-        doc_hiddens = self.text_lstm(torch.cat(drnn_input, 2), x1_mask)
+        # Encode context with RNN
+        context_hiddens = self.text_lstm(torch.cat(drnn_input, 2), x1_mask) # shape(batch, context_len, hdim) 
 
         # Encode question with RNN + merge hiddens
         question_hiddens = self.question_rnn(x2_emb, x2_mask)
@@ -130,9 +133,11 @@ class RnnDocReader(nn.Module):
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
             q_merge_weights = self.self_attn(question_hiddens, x2_mask)
-        question_hidden = layers.weighted_avg(question_hiddens, q_merge_weights)
+        question_hidden = layers.weighted_avg(question_hiddens, q_merge_weights) # shape(batch, hdim)
 
         # Predict start and end positions
-        start_scores = self.start_attn(doc_hiddens, question_hidden, x1_mask)
-        end_scores = self.end_attn(doc_hiddens, question_hidden, x1_mask)
-        return start_scores, end_scores
+        start_scores = self.start_attn(context_hiddens, question_hidden, x1_mask) # shape(batch, context_len)
+        # end_scores = self.end_attn(context_hiddens, question_hidden, x1_mask)
+        correct_score = self.out(start_scores)
+        # return start_scores, end_scores
+        return correct_score
