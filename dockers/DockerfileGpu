@@ -1,0 +1,59 @@
+FROM pytorch/pytorch:1.7.0-cuda11.0-cudnn8-runtime
+
+# # Install some basic utilities
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    sudo \
+    git \
+    bzip2 \
+    libx11-6 &&\
+    apt-get clean
+#  && rm -rf /var/lib/apt/lists/*
+
+
+ARG USER_ID=1001
+ARG GROUP_ID=1001
+
+RUN addgroup --gid $GROUP_ID user
+RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user && \
+    chown -R user:user /workspace && \
+    echo "user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-user
+RUN chmod -R 777 /opt/conda
+USER user 
+
+# # All users can use /home/user as their home directory
+ENV PATH="${PATH}:/home/user/.local/bin"
+ENV HOME=/home/user
+RUN chmod 777 /home/user && chmod 777 /workspace
+RUN conda init
+
+# Install OpenJDK-11
+RUN sudo apt-get update && \
+    sudo apt-get install -y openjdk-11-jre-headless && \
+    # apt-get install -y ant && \
+    sudo apt-get clean;
+
+# Fix certificate issues
+RUN sudo apt-get update && \
+    sudo apt-get install ca-certificates-java && \
+    sudo apt-get clean && \
+    sudo update-ca-certificates -f;
+
+# Setup JAVA_HOME -- useful for docker commandline
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
+RUN export JAVA_HOME
+
+
+COPY requirements.yml /workspace
+RUN conda env update --file requirements.yml && \
+    conda install -y nodejs -c conda-forge --repodata-fn=repodata.json
+RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager && \
+    jupyter labextension enable widgetsnbextension && \
+    jupyter lab clean
+RUN conda clean -ya
+# RUN conda env update --file env.yml  --prune
+# RUN conda config --add channels conda-forge && \
+#     conda config --set channel_priority strict && \
+#     conda install --file requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt

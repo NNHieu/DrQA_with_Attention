@@ -1,0 +1,41 @@
+FROM python:3
+
+###################################
+#### Install Java 11
+###################################
+# ARG JDK_VERSION=15.0.1
+# ARG TAR_JAVA_FILE_DIR=others/setup_docker/
+# ARG TAR_JAVA_FILE_NAME=jdk_bin.tar.gz
+
+# COPY ${TAR_JAVA_FILE_DIR}/${TAR_JAVA_FILE_NAME} /tmp
+# ENV JAVA_HOME /usr/lib/jvm/jdk-${JDK_VERSION}
+# ARG INSTALL_DIR=/usr/bin
+# WORKDIR $INSTALL_DIR
+# RUN mkdir /usr/lib/jvm && tar xvf /tmp/${TAR_JAVA_FILE_NAME} -C /usr/lib/jvm \
+#     && ln -s $JAVA_HOME ${INSTALL_DIR}/java \
+#     && rm -rf $JAVA_HOME/man /tmp/${TAR_JAVA_FILE}
+# ENV PATH $PATH:$JAVA_HOME/bin
+# Install OpenJDK-11
+RUN apt-get update && \
+    apt-get install -y openjdk-11-jre-headless && \
+    apt-get clean;
+
+# RUN mkdir /code
+# WORKDIR /code
+# COPY requirements.txt /code/
+# RUN pip install -r requirements.txt
+
+###################################
+#### Transformer
+###################################
+# ARG TRANSFORMERS_MASTER=transformers-master.zip
+
+# COPY ${TRANSFORMERS_MASTER} /tmp
+# RUN unzip /tmp/${TRANSFORMERS_MASTER} -d /tmp && cd /tmp/transformers-master && pip install --upgrade . && rm -r /tmp/transformers-master /tmp/${TRANSFORMERS_MASTER}
+# WORKDIR /code
+
+###################################
+#### FastText
+###################################
+# RUN cd /tmp && git clone https://github.com/facebookresearch/fastText.git &&\
+#     cd fastText && pip install . && cd /code && rm -rf /tmp/fastText

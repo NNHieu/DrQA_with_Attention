@@ -4,29 +4,30 @@ services:
   gpu:
     build: 
       context: .
-      dockerfile: DockerfileGpu
+      dockerfile: dockers/DockerfileGpu
       args:
         buildno: 1 
-    image: answer:gpu
-    command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
+    image: hine/pytorch:latest
+    user: user
+    command: jupyter lab --ip 0.0.0.0 --allow-root --port 8080 --no-browser
     volumes: 
-      - .:/code
+      - .:/workspace
     ports:
       - "8080:8080"
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-
-  cpu:
-    build: 
-      context: .
-      dockerfile: DockerfileCpu
-      args:
-        buildno: 1
-    image: answer:cpu
-    command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
-    volumes: 
-      - .:/code
-    ports:
-      - "8080:8080"
+  # cpu:
+  #   build: 
+  #     context: .
+  #     dockerfile: dockers/DockerfileCpu
+  #     args:
+  #       buildno: 1
+  #   image: answer:cpu
+  #   # image: int3306_frontend_web:latest
+  #   command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
+  #   volumes: 
+  #     - .:/code
+  #   ports:
+  #     - "8080:8080"
 

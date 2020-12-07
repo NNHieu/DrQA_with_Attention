@@ -98,15 +98,15 @@ ENV/
 /site
 
 # mypy
+/readers/PhoBert/base/*
 .mypy_cache/
-
-/others/*
-!/others/README.md
-!/others/setup_docker/README.md
-/bert
-/.vscode
-/transformers-master
+/.vscode/
+/dataset/*
+/wordembedding/pretrain_models/fasttext/*
+/wordembedding/pretrain_models/word2vec/*
+/Ranger-Deep-Learning-Optimizer
 /models/*
-!/models/README.md
-/Dataset/*
-!/Dataset/Readme.md
+/lightning_logs/*
+/bertviz_repo
+/textprocessor/vncorenlp/*
+/others/*
