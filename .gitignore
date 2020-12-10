@@ -102,11 +102,13 @@ ENV/
 .mypy_cache/
 /.vscode/
 /dataset/*
-/wordembedding/pretrain_models/fasttext/*
-/wordembedding/pretrain_models/word2vec/*
+/wordembedding/pretrain_models/*
 /Ranger-Deep-Learning-Optimizer
 /models/*
 /lightning_logs/*
 /bertviz_repo
 /textprocessor/vncorenlp/*
 /others/*
+/tf_logs/*
+/tb_logs/*
+/jupyterlab-qa/*

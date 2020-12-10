@@ -1,32 +1,28 @@
-name: base
-channels:
-  - pytorch
-  - conda-forge
-  - defaults
-dependencies:
-  - jupyter
-  - jupyterlab
-  - ipywidgets
-  - pandas
-  # - underthesea
-  - scikit-learn
-  - gensim
-  - pytorch-lightning
-  # - transformers
-  # - sentencepiece
-  - pip:
-    - vncorenlp
-prefix: /opt/conda
-# jupyter
-# jupyterlab
-# ipywidgets
-# pandas
-# # underthesea
-# scikit-learn
-# vncorenlp
-# gensim
-# pytorch-lightning
-# # transformers
-# # sentencepiece
+# name: base
+# channels:
+#   - pytorch
+#   - conda-forge
+#   - defaults
+# dependencies:
+#   - jupyter
+#   - jupyterlab
+#   - ipywidgets
+#   - pandas
+#   # - underthesea
+#   - scikit-learn
+#   - gensim
+#   - pytorch-lightning
+#   # - transformers
+#   # - sentencepiece
+#   - pip:
+#     - vncorenlp
+# prefix: /opt/conda
+pandas
+underthesea
+scikit-learn
+vncorenlp
+gensim
+# transformers
+# sentencepiece
 
     

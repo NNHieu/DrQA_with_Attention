@@ -5,7 +5,7 @@ import pandas as pd
 from functools import reduce
 from sklearn.model_selection import train_test_split
 import itertools 
-import tqdm
+from tqdm import tqdm
 import json
 from textprocessor.normalization import *
 #%%
@@ -86,7 +86,7 @@ def _vncore_feature_row(row, cols={'question':'q', 'text':'t'}, filters=None):
 def create_feature_df(df, cols={'question':'q', 'text':'t'}, drop=False, filters=None):
     sample = _vncore_feature_row(df.iloc[0],  cols=cols)
     feat_df = pd.DataFrame(columns=[*sample.keys()])
-    for i, r in df.iterrows():
+    for i, r in tqdm(df.iterrows(), total=df.shape[0]):
         feat_df = feat_df.append(_vncore_feature_row(r, cols=cols, filters=filters), ignore_index=True)
     return feat_df.drop(columns=list(cols.keys()))
 
@@ -109,10 +109,15 @@ def _filter_row(row, filters, group, reverse_check=False):
         assert all(len(str_tok_col.split(' ')) == len(sf.split(' ')) for sf in str_tok_feats)
     return row
 
-def filter_toknfeat_df(df, filters, group={'q_toks': ['q_pos', 'q_ner'], 't_toks': ['t_pos', 't_ner']}, reverse_check=False):
+def filter_toknfeat_df(df, filters, group={'q_toks': ['q_pos', 'q_ner'], 't_toks': ['t_pos', 't_ner']}, reverse_check=False, skip_exception=True):
     res = pd.DataFrame(columns=df.columns)
     for i, r in df.iterrows():
-        res = res.append(_filter_row(r, filters, group, reverse_check), ignore_index=True)
+        try:
+            res = res.append(_filter_row(r, filters, group, reverse_check), ignore_index=True)
+        except Exception as e:
+            print('Skip because ', e)
+            if not skip_exception:
+                raise e
         # print(res)
     return res
 # %%

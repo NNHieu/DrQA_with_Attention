@@ -64,6 +64,7 @@ class EmbeddingModule(nn.Module):
             words: iterable of tokens. Only those that are indexed in the
                 dictionary are kept.
         """
+        print("Loading Embedding")
         words = {w for w in words if w in self.vocab}
         # logger.info('Loading pre-trained embeddings for %d words from %s' %
         #             (len(words), embedding_file))
@@ -72,7 +73,7 @@ class EmbeddingModule(nn.Module):
         # When normalized, some words are duplicated. (Average the embeddings).
         vec_counts = {}
         for w in wv.vocab:
-            if w not in words:
+            if w in words:
                 vec = torch.Tensor(np.copy(wv[w]))
                 if w not in vec_counts:
                     vec_counts[w] = 1
@@ -86,7 +87,7 @@ class EmbeddingModule(nn.Module):
         for w, c in vec_counts.items():
             embedding[self.vocab[w]].div_(c)
 
-        logger.info('Loaded %d embeddings (%.2f%%)' %
+        print('Loaded %d embeddings (%.2f%%)' %
                     (len(vec_counts), 100 * len(vec_counts) / len(words)))
     
     def forward(self, ids):

@@ -20,10 +20,10 @@ RUN apt-get update && \
     apt-get install -y openjdk-11-jre-headless && \
     apt-get clean;
 
-# RUN mkdir /code
-# WORKDIR /code
-# COPY requirements.txt /code/
-# RUN pip install -r requirements.txt
+RUN mkdir /code
+WORKDIR /code
+COPY requirements.txt /code/
+RUN pip install -r requirements.txt
 
 ###################################
 #### Transformer

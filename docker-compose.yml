@@ -14,20 +14,21 @@ services:
       - .:/workspace
     ports:
       - "8080:8080"
+      - "6006:6006"
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-  # cpu:
-  #   build: 
-  #     context: .
-  #     dockerfile: dockers/DockerfileCpu
-  #     args:
-  #       buildno: 1
-  #   image: answer:cpu
-  #   # image: int3306_frontend_web:latest
-  #   command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
-  #   volumes: 
-  #     - .:/code
-  #   ports:
-  #     - "8080:8080"
+  cpu:
+    build: 
+      context: .
+      dockerfile: dockers/DockerfileCpu
+      args:
+        buildno: 1
+    image: answer:cpu
+    # image: int3306_frontend_web:latest
+    command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
+    volumes: 
+      - .:/code
+    # ports:
+      # - "8080:8080"
 
