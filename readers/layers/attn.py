@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import PackedSequence
-from .mish import Mish
 from .general import LinearWithChannel
 import math
 
@@ -11,6 +10,9 @@ class ScaleDotProductAttention(nn.Module):
     """ 
     """
     def __init__(self, input_size, identity=False):
+        """
+        
+        """
         super(ScaleDotProductAttention, self).__init__()
         self.input_size = input_size
         self.identity = identity
@@ -55,11 +57,7 @@ class Multihead(nn.Module):
         self.proj_Q = LinearWithChannel(qk_feature_size, qk_feature_size, num_head)
         self.proj_K = LinearWithChannel(qk_feature_size, qk_feature_size, num_head)
         self.proj_V = LinearWithChannel(v_feature_size, v_feature_size, num_head)
-
-        self.heads = nn.ModuleList()
         self.linear_out = nn.Linear(num_head*v_feature_size, out_size)
-        for i in range(num_head):
-            self.heads.append(ScaleDotProductAttention(qk_feature_size, False))
     def forward(self, Q, K, V, K_mask):
         assert K.size(1) == V.size(1)
         num_batch = Q.size(0)
@@ -72,20 +70,20 @@ class Multihead(nn.Module):
         assert len(K_mask.size()) == 2 and K_mask.size(0) == num_batch and K_mask.size(1) == klen
 
 
-        Q_proj = Q.view(-1, Q.view(-1))
+        Q_proj = Q.view(-1, Q.size(-1))
         Q_proj = Q_proj.unsqueeze(0).expand(self.num_head, *Q_proj.size())
         assert Q_proj.size(0) == self.num_head and Q_proj.size(1) == num_batch*qlen and Q_proj.size(2) == dq
         Q_proj = self.proj_Q(Q_proj)
         assert Q_proj.size(0) == self.num_head and Q_proj.size(1) == num_batch*qlen and Q_proj.size(2) == dq
 
 
-        K_proj = K.view(-1, Q.view(-1))
+        K_proj = K.view(-1, K.size(-1))
         K_proj = K_proj.unsqueeze(0).expand(self.num_head, *K_proj.size())
         assert K_proj.size(0) == self.num_head and K_proj.size(1) == num_batch*klen and K_proj.size(2) == dk
         K_proj = self.proj_K(K_proj)
         assert K_proj.size(0) == self.num_head and K_proj.size(1) == num_batch*klen and K_proj.size(2) == dk
 
-        V_proj = V.view(-1, Q.view(-1))
+        V_proj = V.view(-1, V.size(-1))
         V_proj = V_proj.unsqueeze(0).expand(self.num_head, *V_proj.size())
         assert V_proj.size(0) == self.num_head and V_proj.size(1) == num_batch*vlen and V_proj.size(2) == dv
         V_proj = self.proj_V(V_proj)
@@ -115,9 +113,9 @@ class Multihead(nn.Module):
         assert alpha.size(0) == self.num_head*num_batch and alpha.size(1) == qlen and alpha.size(2) == klen
 
         # Tính attn vô value
-        heads = alpha.bmm(V_proj).view(self.num_head, -1, qlen, klen) # shape(num_head, batch, qlen, dv)
+        heads = alpha.bmm(V_proj).view(self.num_head, -1, qlen, dv) # shape(num_head, batch, qlen, dv)
         
-        head_cat = torch.cat((heads[i, ...] for i in range(self.num_head)), dim=-1)
+        head_cat = torch.cat([heads[i] for i in range(self.num_head)], dim=-1)
         out = self.linear_out(head_cat.view(-1, head_cat.size(-1)))
         return out.view(num_batch, qlen, dv)
 
@@ -126,14 +124,14 @@ class SelfAttnMultihead(Multihead):
         super().__init__(num_head, feature_size, feature_size, out_size if out_size is not None else feature_size)
 
 class EncodeModule(nn.Module):
-    def __init__(self, hidden_size, out_size, num_head, dropout_rate=0.1) -> None:
+    def __init__(self, hidden_size, value_size, out_size, num_head, dropout_rate=0.1) -> None:
         super(EncodeModule, self).__init__()
         self.linear1 = nn.Linear(hidden_size, hidden_size * 2)
         self.linear2 = nn.Linear(hidden_size * 2, hidden_size)
         self.norm1 = nn.LayerNorm((hidden_size, ))
         self.norm2 = nn.LayerNorm((hidden_size, ))
         self.dropout = nn.Dropout(p=dropout_rate)
-        self.mul_head = Multihead(hidden_size, out_size, num_head)
+        self.mul_head = Multihead(num_head, hidden_size, value_size, out_size)
 
     def forward(self, Q, K, V, K_mask):
         heads = self.mul_head(Q, K, V, K_mask)

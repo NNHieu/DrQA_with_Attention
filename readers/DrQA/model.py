@@ -1,266 +1,112 @@
 import torch
-import torch.optim as optim
+import torch.nn as nn
 import torch.nn.functional as F
-from torch import nn
+from ..layers.rnn import CustomBRNN
+from ..layers.general import LinearSeqAttn, BilinearSeqAttn, uniform_weights, weighted_avg
+from ..layers.attn import Multihead, ScaleDotProductAttention, SelfAttnMultihead, EncodeModule
 import numpy as np
 import logging
-import copy
 
-# from .config import override_model_args
-from .module import RnnDocReader, EmbeddingModule
-import logging
 
-logger = logging.getLogger(__name__)
+class RnnDocReader(nn.Module):
+    RNN_UNIT_TYPES = {'lstm': nn.LSTM, 'gru': nn.GRU, 'rnn': nn.RNN}
 
-class Reader(object):
-
-    def __init__(self, args, vocab, normalize=True):
-        """
-        parameters:
-        ------------
-        args-config:
-            model_type
-
-        """
+    def __init__(self, args, normalize=True):
+        super(RnnDocReader, self).__init__()
+        # Store config
         self.args = args
-        self.updates = 0
-        self.use_cuda = False
-        self.args.vocab_size = len(vocab)
-        self.vocab = vocab
+        # Input size to context RNN: word emb + question emb + manual features
+        context_input_size = args.embedding_dim + args.num_features
+        # Input size to question RNN: word emb + question emb + manual features
+        question_input_size = args.embedding_dim + args.num_features
 
-        # Building network. If normalize if false, scores are not normalized
-        # 0-1 per paragraph (no softmax).
-        if args.model_type == 'rnn':
-            self.network = RnnDocReader(args, normalize)
-        else:
-            raise RuntimeError('Unsupported model: %s' % args.model_type)
+        # Projection for attention weighted question
+        if args.use_qemb:
+            if args.num_attn_head == 0:
+                self.qemb_match = ScaleDotProductAttention(question_input_size)
+            else:
+                self.qemb_match = EncodeModule(question_input_size, question_input_size, question_input_size, args.num_attn_head)
+            context_input_size += question_input_size
 
+        # RNN context encoder
+        self.context_rnn = CustomBRNN(
+            input_size=context_input_size,
+            hidden_size=args.hidden_size,
+            num_layers=args.context_layers,
+            dropout_rate=args.dropout_rnn,
+            dropout_output=args.dropout_rnn_output,
+            concat_layers=args.concat_rnn_layers,
+            rnn_unit_type=self.RNN_UNIT_TYPES[args.rnn_type],
+            padding=args.rnn_padding,
+        )
 
-    def expand_dictionary(self, words):
-        to_add = {self.vocab.normalize(w) for w in words
-                  if w not in self.vocab}
-
-        # Add words to dictionary and expand embedding layer
-        if len(to_add) > 0:
-            logger.info('Adding %d new words to dictionary...' % len(to_add))
-            for w in to_add:
-                self.vocab.add(w)
-            self.args.vocab_size = len(self.vocab)
-            logger.info('New vocab size: %d' % len(self.vocab))
-
-            old_embedding = self.network.embedding.weight.data
-            self.network.embedding = torch.nn.Embedding(self.args.vocab_size,
-                                                        self.args.embedding_dim,
-                                                        padding_idx=0)
-            new_embedding = self.network.embedding.weight.data
-            new_embedding[:old_embedding.size(0)] = old_embedding
-
-        # Return added words
-        return to_add
-    def load_embeddings(self, words, wv):
-        """Load Gensim embedding model
-        Args:
-            words: iterable of tokens. Only those that are indexed in the
-              dictionary are kept.
-        """
-        words = {w for w in words if w in self.vocab}
-        # logger.info('Loading pre-trained embeddings for %d words from %s' %
-        #             (len(words), embedding_file))
-        embedding = self.network.embedding.weight.data
-
-        # When normalized, some words are duplicated. (Average the embeddings).
-        vec_counts = {}
-        for w in wv.vocab:
-            if w not in words:
-                vec = torch.Tensor(np.copy(wv[w]))
-                if w not in vec_counts:
-                    vec_counts[w] = 1
-                    embedding[self.vocab[w]].copy_(vec)
-                else:
-                    logging.warning(
-                        'WARN: Duplicate embedding found for %s' % w
-                    )
-                    vec_counts[w] = vec_counts[w] + 1
-                    embedding[self.vocab[w]].add_(vec)
-        for w, c in vec_counts.items():
-            embedding[self.vocab[w]].div_(c)
-
-        logger.info('Loaded %d embeddings (%.2f%%)' %
-                    (len(vec_counts), 100 * len(vec_counts) / len(words)))
-
-    
-    # --------------------------------------------------------------------------
-    # Learning
-    # --------------------------------------------------------------------------
-    def init_optimizer(self, state_dict=None):
-        """Initialize an optimizer for the free parameters of the network.
-
-        Args:
-            state_dict: network parameters
-        """
-        if self.args.fix_embeddings:
-            for p in self.network.embedding.parameters():
-                p.requires_grad = False
-        parameters = [p for p in self.network.parameters() if p.requires_grad]
-        if self.args.optimizer == 'sgd':
-            self.optimizer = optim.SGD(parameters, self.args.learning_rate,
-                                       momentum=self.args.momentum,
-                                       weight_decay=self.args.weight_decay)
-        elif self.args.optimizer == 'adamax':
-            self.optimizer = optim.Adamax(parameters,
-                                          weight_decay=self.args.weight_decay)
-        else:
-            raise RuntimeError('Unsupported optimizer: %s' %
-                               self.args.optimizer)
-
-    def set_criterion(self, criterion):
-        self.criterion = criterion 
-
-    def update(self, ex):
-        """Forward a batch of examples; step the optimizer to update weights.
-        Inputs:
-        ex[0] = context ids                 [batch * len_c]
-        ex[1] = context features indices    [batch * len_c * nfeat]
-        ex[2] = context padding mask        [batch * len_c]
-        ex[3] = question word indices       [batch * len_q]
-        ex[4] = question padding mask       [batch * len_q]
-        ex[5] = target label                [batch]
-        """
-        if not self.optimizer:
-            raise RuntimeError('No optimizer set.')
-
-        if not self.criterion:
-            raise RuntimeError('No criterior set.')
-        # Train mode
-        self.network.train()
-        # Transfer to GPU
-        if self.use_cuda:
-            inputs = [e if e is None else e.cuda(non_blocking=True)
-                      for e in ex[:5]]
-            # target_s = ex[5].cuda(non_blocking=True)
-            # target_e = ex[6].cuda(non_blocking=True)
-            target_label = ex[5].cuda(non_blocking=True)
-        else:
-            inputs = [e if e is None else e for e in ex[:5]]
-            # target_s = ex[5]
-            # target_e = ex[6]
-            target_label = ex[5]
-
-
-        # Run forward
-        # score_s, score_e = self.network(*inputs)
-        score_correct = self.network(*inputs)
-
-        # Compute loss and accuracies
-        # loss = F.nll_loss(score_s, target_s) + F.nll_loss(score_e, target_e)
-        loss = self.criterion(score_correct, target_label)
-        # Clear gradients and run backward
-        self.optimizer.zero_grad()
-        loss.backward()
-
-        # Clip gradients
-        torch.nn.utils.clip_grad_norm_(self.network.parameters(),
-                                       self.args.grad_clipping)
-
-        # Update parameters
-        self.optimizer.step()
-        self.updates += 1
-
-        # Reset any partially fixed parameters (e.g. rare words)
-        self.reset_parameters()
-
-        return loss.item(), ex[0].size(0) # loss và batch size
-
-    def reset_parameters(self):
-        """Reset any partially fixed parameters to original states."""
-        pass
-        # Reset fixed embeddings to original value
-        # if self.args.tune_partial > 0:
-        #     if self.parallel:
-        #         embedding = self.network.module.embedding.weight.data
-        #         fixed_embedding = self.network.module.fixed_embedding
-        #     else:
-        #         embedding = self.network.embedding.weight.data
-        #         fixed_embedding = self.network.fixed_embedding
-
-        #     # Embeddings to fix are the last indices
-        #     offset = embedding.size(0) - fixed_embedding.size(0)
-        #     if offset >= 0:
-        #         embedding[offset:] = fixed_embedding
-
-    # --------------------------------------------------------------------------
-    # Prediction
-    # --------------------------------------------------------------------------
-
-    def predict(self, ex):
-        """Forward a batch of examples only to get predictions.
-        Args:
-            ex: the batch
-            candidates: batch * variable length list of string answer options.
-              The model will only consider exact spans contained in this list.
-            top_n: Number of predictions to return per batch element.
-            async_pool: If provided, non-gpu post-processing will be offloaded
-              to this CPU process pool.
-        Batch includes:
-            ex[0] = context ids                 [batch * len_c]
-            ex[1] = context features indices    [batch * len_c * nfeat]
-            ex[2] = context padding mask        [batch * len_c]
-            ex[3] = question word indices       [batch * len_q]
-            ex[4] = question padding mask       [batch * len_q]
-        Output:
-            pred_label
-
-        If async_pool is given, these will be AsyncResult handles.
-        """
-        # Eval mode
-        self.network.eval()
-
-        # Transfer to GPU
-        if self.use_cuda:
-            inputs = [e if e is None else e.cuda(non_blocking=True)
-                      for e in ex[:5]]
-        else:
-            inputs = [e for e in ex[:5]]
-
-        # Run forward
-        with torch.no_grad():
-            # score_s, score_e = self.network(*inputs)
-            label_score = self.network(*inputs) # shape(batch, context_len)
-
-        # Decode predictions# score_s, score_e = self.network(*inputs)
-        # score_s = score_s.data.cpu()
-        # score_e = score_e.data.cpu()
-        label_score = label_score.data.cpu()
-        return torch.argmax(label_score, dim=1)
-
-    # --------------------------------------------------------------------------
-    # Runtime
-    # --------------------------------------------------------------------------
-
-    def cuda(self):
-        self.use_cuda = True
-        self.network = self.network.cuda()
-
-    def cpu(self):
-        self.use_cuda = False
-        self.network = self.network.cpu()
-
-class FastTextReader(nn.Module):
-    def __init__(self, args, vocab, normalize=True):
-        super(FastTextReader, self).__init__()
-        self.args = args
-        self.args.vocab_size = len(vocab)
-        self.vocab = vocab
+        # RNN question encoder
+        self.question_rnn = CustomBRNN(
+            input_size=question_input_size,
+            hidden_size=args.hidden_size,
+            num_layers=args.question_layers,
+            dropout_rate=args.dropout_rnn,
+            dropout_output=args.dropout_rnn_output,
+            concat_layers=args.concat_rnn_layers,
+            rnn_unit_type=self.RNN_UNIT_TYPES[args.rnn_type],
+            padding=args.rnn_padding,
+        )
+        # Output sizes of rnn encoders
+        context_hidden_size = question_hidden_size = 2 * args.hidden_size
+        if args.concat_rnn_layers:
+            context_hidden_size *= args.context_layers
+            question_hidden_size *= args.question_layers
         
-        self.embedding = EmbeddingModule(args, vocab)
-        # Building network. If normalize if false, scores are not normalized
-        # 0-1 per paragraph (no softmax).
-        if args.model_type == 'rnn':
-            self.network = RnnDocReader(args, normalize)
+        if args.question_merge_self_attn:
+            if args.num_attn_head == 0:
+                self.question_self_attn = ScaleDotProductAttention(question_hidden_size)
+            else:
+                self.question_self_attn = EncodeModule(question_hidden_size,question_hidden_size,question_hidden_size,args.num_attn_head)
+        # Question merging
+        if args.question_merge not in ['avg', 'learn_weight']:
+            raise NotImplementedError('merge_mode = %s' % args.merge_mode)
+        elif args.question_merge == 'learn_weight':
+            self.q_merge = LinearSeqAttn(question_hidden_size)
+
+
+        # Bilinear attention for label
+        self.context_attn = BilinearSeqAttn(
+            context_hidden_size,
+            question_hidden_size,
+            normalize=normalize,
+        )
+
+        self.out = nn.Linear(context_hidden_size, 2)
+    def forward(self, q_emb, q_mask, t_emb, t_mask, q_f=None, t_f=None):
+        """Inputs:
+        x1 = context ids             [batch * len_d * embedding_dim]
+        x1_f = context features indices  [batch * len_d * nfeat]
+        x1_mask = context padding mask        [batch * len_d]
+        x2 = question word indices             [batch * len_q * embedding_dim]
+        x2_mask = question padding mask        [batch * len_q]
+        """
+        # # Embed both context and question
+        # x1_emb = self.embedding(x1)
+        # x2_emb = self.embedding(x2)
+        q = torch.cat((q_emb, q_f), dim=-1)
+        
+        t = torch.cat((t_emb, t_f), dim=-1)
+        if self.args.use_qemb:
+            t_q_attn = self.qemb_match(t, q, q, q_mask)
+            t = torch.cat((t, t_q_attn), dim=-1)
+        
+        question_hiddens = self.question_rnn(q, q_mask)
+        if self.args.question_merge_self_attn:
+            question_hiddens = self.question_self_attn(question_hiddens, question_hiddens, question_hiddens, q_mask)
+        if self.args.question_merge == 'avg':
+            q_merge_weights = uniform_weights(question_hiddens, q_mask)
+        elif self.args.question_merge == 'learn_weight':
+            q_merge_weights = self.q_merge(question_hiddens, q_mask)
         else:
-            raise RuntimeError('Unsupported model: %s' % args.model_type)
-    
-    def forward(self, x1, x1_f, x1_mask, x2, x2_mask):
-        x1_emb = self.embedding(x1)
-        x2_emb = self.embedding(x2)
-        return self.network(x1_emb, x1_f, x1_mask, x2_emb, x2_mask)
+            raise NotImplementedError('merge_mode = %s' % self.args.question_merge)
+        question_hidden = weighted_avg(question_hiddens, q_merge_weights)
+        
+        context_hiddens = self.context_rnn(t, t_mask)
+        t_merge_weights = self.context_attn(context_hiddens, question_hidden, t_mask)
+        context_hidden = weighted_avg(context_hiddens, t_merge_weights)
+        return self.out(context_hidden)

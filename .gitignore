@@ -101,14 +101,25 @@ ENV/
 /readers/PhoBert/base/*
 .mypy_cache/
 /.vscode/
-/dataset/*
 /wordembedding/pretrain_models/*
 /Ranger-Deep-Learning-Optimizer
 /models/*
-/lightning_logs/*
+
+/dataset/corpus/*
+/dataset/qaset/aug/*
+
+# Folder cài vizualiztion cho bert
 /bertviz_repo
-/textprocessor/vncorenlp/*
-/others/*
-/tf_logs/*
+
+/others/setup_docker
+!/others/setup_docker/Readme.md
+# Không commit các file log
 /tb_logs/*
+!/tb_logs/Readme.md
+/lightning_logs/*
+
+# Không file của vncorenlp
+/textprocessor/vncorenlp/*
+!/textprocessor/vncorenlp/Readme.md
+
 /jupyterlab-qa/*

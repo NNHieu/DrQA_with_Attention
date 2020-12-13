@@ -9,9 +9,9 @@ services:
         buildno: 1 
     image: hine/pytorch:latest
     user: user
-    command: jupyter lab --ip 0.0.0.0 --allow-root --port 8080 --no-browser
+    command: jupyter notebook --ip 0.0.0.0 --allow-root --port 8080 --no-browser
     volumes: 
-      - .:/workspace
+      - .:/home/user/code
     ports:
       - "8080:8080"
       - "6006:6006"

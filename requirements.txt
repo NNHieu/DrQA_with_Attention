@@ -1,0 +1,11 @@
+pandas
+scikit-learn
+vncorenlp
+gensim
+matplotlib
+jupyter
+ipywidgets
+pytorch-lightning
+# sentencepiece
+
+    

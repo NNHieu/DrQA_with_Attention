@@ -111,7 +111,7 @@ def _filter_row(row, filters, group, reverse_check=False):
 
 def filter_toknfeat_df(df, filters, group={'q_toks': ['q_pos', 'q_ner'], 't_toks': ['t_pos', 't_ner']}, reverse_check=False, skip_exception=True):
     res = pd.DataFrame(columns=df.columns)
-    for i, r in df.iterrows():
+    for i, r in tqdm(df.iterrows(), total=df.shape[0]):
         try:
             res = res.append(_filter_row(r, filters, group, reverse_check), ignore_index=True)
         except Exception as e:

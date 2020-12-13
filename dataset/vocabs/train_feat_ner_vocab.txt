@@ -1,0 +1,12 @@
+0 <unk>
+1 <pad>
+2 <cls>
+3 O
+4 B-PER
+5 B-ORG
+6 I-ORG
+7 B-LOC
+8 B-MISC
+9 I-MISC
+10 I-LOC
+11 I-PER
