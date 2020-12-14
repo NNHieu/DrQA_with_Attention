@@ -1,4 +1,4 @@
-# Profs of improvement
+# Proof of improvement
 Do vấn đề overfit, để chứng minh cải tiến so với model gốc, ta xem xét khả năng của model trong quá trình training, tức tốc độ hội tụ và F1 score trên training set.  
 Màu xanh lam : Model với multihead attn question-context + multihead attn question-question trên bilstm  
 Màu xanh lá  : Model với multihead attn question-context  
