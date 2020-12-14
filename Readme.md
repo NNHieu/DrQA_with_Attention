@@ -3,9 +3,9 @@ Do vấn đề overfit, để chứng minh cải tiến so với model gốc, ta
 Màu xanh lam : Model với multihead attn question-context + multihead attn question-question trên bilstm  
 Màu xanh lá  : Model với multihead attn question-context
 Màu xanh hồng: Original model  
-![alt text](https://github.com/NNHieu/TrueAnswer_ZaloAIChallenge2019_VietnameseWikiQA/tree/master/images/TrainLoss.png "Train loss")  
-![alt text](https://github.com/NNHieu/TrueAnswer_ZaloAIChallenge2019_VietnameseWikiQA/tree/master/images/F1.png "Train loss")  
-![alt text](https://github.com/NNHieu/TrueAnswer_ZaloAIChallenge2019_VietnameseWikiQA/tree/master/images/ValLoss.png "Train loss")  
+![TrainLoss](./images/TrainLoss.png)  
+![F1](./images/F1.png)  
+![ValLoss](./images/ValLoss.png)  
 
 # Setup
 Yêu cầu:
