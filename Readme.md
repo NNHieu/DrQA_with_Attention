@@ -1,4 +1,4 @@
-# Compare
+# Comparition
 Màu xanh lam : Model với multihead attn question-context + multihead attn question-question trên bilstm  
 Màu xanh lá  : Model với multihead attn question-context  
 Màu hồng     : Original model  
