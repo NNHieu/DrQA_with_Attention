@@ -1,7 +1,10 @@
+# DrQA with Multihead Attention
+Dựa trên paper [Reading Wikipedia to Answer Open-Domain Questions](https://arxiv.org/abs/1704.00051) - Danqi Chen, Adam Fisch, Jason Weston, Antoine Bordes
+
 # So sánh
 Màu xanh lam : Model với multihead attn question-context + multihead attn question-question trên bilstm  
 Màu xanh lá  : Model với multihead attn question-context  
-Màu hồng     : Original model  
+Màu hồng     : Base model  
 ![TrainLoss](./images/TrainLoss.png)
 ![F1](./images/F1.png)
 ![ValLoss](./images/ValLoss.png)  
