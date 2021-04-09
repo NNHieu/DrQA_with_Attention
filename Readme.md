@@ -9,7 +9,8 @@ Màu hồng     : Base model
 ![F1](./images/F1.png)
 ![ValLoss](./images/ValLoss.png)  
 
-Multiheed attention được implement dựa theo paper [Attention Is All You Need](https://arxiv.org/abs/1706.03762) 
+Multiheed attention được implement dựa theo paper [Attention Is All You Need](https://arxiv.org/abs/1706.03762) - Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin
+
 ![attn](./images/attn.png)  
 
 
