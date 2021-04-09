@@ -1,10 +1,14 @@
-# Comparition
+# So sánh
 Màu xanh lam : Model với multihead attn question-context + multihead attn question-question trên bilstm  
 Màu xanh lá  : Model với multihead attn question-context  
 Màu hồng     : Original model  
 ![TrainLoss](./images/TrainLoss.png)
 ![F1](./images/F1.png)
 ![ValLoss](./images/ValLoss.png)  
+
+Multiheed attention được implement dựa theo [paper](https://arxiv.org/abs/1706.03762) 
+![attn](./images/attn.png)  
+
 
 # Setup
 Yêu cầu:
