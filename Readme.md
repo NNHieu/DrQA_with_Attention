@@ -9,7 +9,7 @@ Màu hồng     : Base model
 ![F1](./images/F1.png)
 ![ValLoss](./images/ValLoss.png)  
 
-Multiheed attention được implement dựa theo [paper](https://arxiv.org/abs/1706.03762) 
+Multiheed attention được implement dựa theo paper [Attention Is All You Need](https://arxiv.org/abs/1706.03762) 
 ![attn](./images/attn.png)  
 
 
