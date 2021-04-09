@@ -1,6 +1,6 @@
 # DrQA with Multihead Attention
 Mô hình dựa trên paper [Reading Wikipedia to Answer Open-Domain Questions](https://arxiv.org/abs/1704.00051) - Danqi Chen, Adam Fisch, Jason Weston, Antoine Bordes
-Dataset sử dụng là bộ dataset được sử dụng trong cuộc thì Zalo AI 2019 - Vietnamese Wiki Question Answering
+Dataset sử dụng là bộ dataset của cuộc thì Zalo AI 2019 - Vietnamese Wiki Question Answering
 
 # So sánh
 Màu xanh lam : Model với multihead attn question-context + multihead attn question-question trên bilstm  
